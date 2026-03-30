@@ -1,0 +1,75 @@
+#include <stdio.h>
+#include <math.h>
+
+const double E12[] = {1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2};
+
+const double FAKTOR_HOCH = 0.45;     
+const double FAKTOR_NIEDRIG = 0.10;
+const double I_LIMIT_HOCH = 2.5e-6;    
+const double I_LIMIT_NIEDRIG = 1.67e-6; 
+
+const double CL_FIX = 300e-12; 
+const double RM_FIX = 2e6;     
+
+double berechne_strom(double c1, double c2, double cl, double un, double faktor, double rm) {
+    double v_teiler = c1 / (c1 + c2 + cl);
+    return (faktor * un * v_teiler) / rm;
+}
+
+int main() {
+    double c1, u_min, u_max;
+
+    printf("--- Bereichs-Analyse: Passende C2 fuer U_min bis U_max ---\n");
+    printf("Fixwerte: CL = %.1e F, RM = %.1e Ohm\n", CL_FIX, RM_FIX);
+    
+    printf("Eingabe C1 (F): "); 
+    if (scanf("%lf", &c1) != 1) return 1;
+
+    printf("Eingabe Untergrenze U_min (V): "); 
+    if (scanf("%lf", &u_min) != 1) return 1;
+
+    printf("Eingabe Obergrenze U_max (V): "); 
+    if (scanf("%lf", &u_max) != 1) return 1;
+
+    // Falls der User min/max vertauscht hat, korrigieren
+    if (u_min > u_max) {
+        double temp = u_min;
+        u_min = u_max;
+        u_max = temp;
+    }
+
+    printf("\nPruefe Bereich: %.2f V bis %.2f V\n", u_min, u_max);
+    printf("Gesucht: C2, der im GESAMTEN Bereich die Stromlimits einhaelt.\n\n");
+    printf("-----------|-------------------|-------------------\n");
+    printf("C2-Wert    | I_max(%.2fV) | I_min(%.2fV)\n", u_max, u_min);
+    printf("-----------|-------------------|-------------------\n");
+
+    int gefunden = 0;
+    for (int d = -12; d <= -3; d++) {
+        double potenz = pow(10, d);
+        for (int i = 0; i < 12; i++) {
+            double c2 = E12[i] * potenz;
+            
+            // Wir testen den "Worst Case" fuer beide Bedingungen:
+            // 1. Der Strom bei der hoechsten Spannung (0.45 Faktor)
+            double i_max_spannung = berechne_strom(c1, c2, CL_FIX, u_max, FAKTOR_HOCH, RM_FIX);
+            // 2. Der Strom bei der niedrigsten Spannung (0.10 Faktor)
+            double i_min_spannung = berechne_strom(c1, c2, CL_FIX, u_min, FAKTOR_NIEDRIG, RM_FIX);
+
+            // Bedingung: 
+            // - Bei u_max muss der hohe Strom ueber dem Limit liegen
+            // - Bei u_min muss der niedrige Strom unter dem Limit bleiben
+            if (i_max_spannung > I_LIMIT_HOCH && i_min_spannung <= I_LIMIT_NIEDRIG) {
+                printf("%8.1e F | %13.3e A | %13.3e A\n", c2, i_max_spannung, i_min_spannung);
+                gefunden = 1;
+            }
+        }
+    }
+
+    if (!gefunden) {
+        printf("Kein C2 gefunden, der fuer den gesamten Bereich %.2f - %.2f V passt.\n", u_min, u_max);
+    }
+    printf("-----------|-------------------|-------------------\n");
+
+    return 0;
+}
