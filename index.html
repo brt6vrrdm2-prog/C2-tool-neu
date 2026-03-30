@@ -1,75 +1,110 @@
-#include <stdio.h>
-#include <math.h>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C2 Bereichs-Analyse</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
+        h2 { color: #1a73e8; margin-top: 0; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; }
+        .info { font-size: 0.9em; color: #666; margin-bottom: 20px; background: #f8f9fa; padding: 10px; border-radius: 6px; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 25px; transition: background 0.3s; }
+        button:hover { background-color: #1557b0; }
+        #output { margin-top: 25px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; color: #555; }
+        tr:nth-child(even) { background-color: #fafafa; }
+        .no-result { color: #d93025; font-weight: bold; padding: 10px; background: #fce8e6; border-radius: 6px; }
+    </style>
+</head>
+<body>
 
-const double E12[] = {1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2};
+<div class="container">
+    <h2>⚡ C2 Bereichs-Analyse</h2>
+    <div class="info">
+        <strong>Fixwerte:</strong><br>
+        CL = 3.0e-10 F (300 pF) | RM = 2.0e6 Ohm (2 MΩ)
+    </div>
 
-const double FAKTOR_HOCH = 0.45;     
-const double FAKTOR_NIEDRIG = 0.10;
-const double I_LIMIT_HOCH = 2.5e-6;    
-const double I_LIMIT_NIEDRIG = 1.67e-6; 
+    <label for="c1">Eingabe C1 (F):</label>
+    <input type="number" id="c1" step="any" value="0.000001">
 
-const double CL_FIX = 300e-12; 
-const double RM_FIX = 2e6;     
+    <label for="u_min">Untergrenze U_min (V):</label>
+    <input type="number" id="u_min" value="200">
 
-double berechne_strom(double c1, double c2, double cl, double un, double faktor, double rm) {
-    double v_teiler = c1 / (c1 + c2 + cl);
-    return (faktor * un * v_teiler) / rm;
-}
+    <label for="u_max">Obergrenze U_max (V):</label>
+    <input type="number" id="u_max" value="250">
 
-int main() {
-    double c1, u_min, u_max;
+    <button onclick="starteAnalyse()">Analyse starten</button>
 
-    printf("--- Bereichs-Analyse: Passende C2 fuer U_min bis U_max ---\n");
-    printf("Fixwerte: CL = %.1e F, RM = %.1e Ohm\n", CL_FIX, RM_FIX);
-    
-    printf("Eingabe C1 (F): "); 
-    if (scanf("%lf", &c1) != 1) return 1;
+    <div id="output"></div>
+</div>
 
-    printf("Eingabe Untergrenze U_min (V): "); 
-    if (scanf("%lf", &u_min) != 1) return 1;
+<script>
+    const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];[cite: 1]
+    const FAKTOR_HOCH = 0.45;[cite: 1]
+    const FAKTOR_NIEDRIG = 0.10;[cite: 1]
+    const I_LIMIT_HOCH = 2.5e-6;[cite: 1]
+    const I_LIMIT_NIEDRIG = 1.67e-6;[cite: 1]
+    const CL_FIX = 300e-12;[cite: 1]
+    const RM_FIX = 2e6;[cite: 1]
 
-    printf("Eingabe Obergrenze U_max (V): "); 
-    if (scanf("%lf", &u_max) != 1) return 1;
-
-    // Falls der User min/max vertauscht hat, korrigieren
-    if (u_min > u_max) {
-        double temp = u_min;
-        u_min = u_max;
-        u_max = temp;
+    function berechneStrom(c1, c2, cl, un, faktor, rm) {
+        let vTeiler = c1 / (c1 + c2 + cl);[cite: 1]
+        return (faktor * un * vTeiler) / rm;[cite: 1]
     }
 
-    printf("\nPruefe Bereich: %.2f V bis %.2f V\n", u_min, u_max);
-    printf("Gesucht: C2, der im GESAMTEN Bereich die Stromlimits einhaelt.\n\n");
-    printf("-----------|-------------------|-------------------\n");
-    printf("C2-Wert    | I_max(%.2fV) | I_min(%.2fV)\n", u_max, u_min);
-    printf("-----------|-------------------|-------------------\n");
+    function starteAnalyse() {
+        const c1 = parseFloat(document.getElementById('c1').value);
+        let uMin = parseFloat(document.getElementById('u_min').value);
+        let uMax = parseFloat(document.getElementById('u_max').value);
+        const output = document.getElementById('output');
 
-    int gefunden = 0;
-    for (int d = -12; d <= -3; d++) {
-        double potenz = pow(10, d);
-        for (int i = 0; i < 12; i++) {
-            double c2 = E12[i] * potenz;
-            
-            // Wir testen den "Worst Case" fuer beide Bedingungen:
-            // 1. Der Strom bei der hoechsten Spannung (0.45 Faktor)
-            double i_max_spannung = berechne_strom(c1, c2, CL_FIX, u_max, FAKTOR_HOCH, RM_FIX);
-            // 2. Der Strom bei der niedrigsten Spannung (0.10 Faktor)
-            double i_min_spannung = berechne_strom(c1, c2, CL_FIX, u_min, FAKTOR_NIEDRIG, RM_FIX);
+        // Korrektur falls vertauscht
+        if (uMin > uMax) {
+            [uMin, uMax] = [uMax, uMin];
+        }
 
-            // Bedingung: 
-            // - Bei u_max muss der hohe Strom ueber dem Limit liegen
-            // - Bei u_min muss der niedrige Strom unter dem Limit bleiben
-            if (i_max_spannung > I_LIMIT_HOCH && i_min_spannung <= I_LIMIT_NIEDRIG) {
-                printf("%8.1e F | %13.3e A | %13.3e A\n", c2, i_max_spannung, i_min_spannung);
-                gefunden = 1;
+        let gefunden = false;
+        let html = `<table>
+            <tr>
+                <th>C2-Wert (F)</th>
+                <th>I_max (${uMax}V)</th>
+                <th>I_min (${uMin}V)</th>
+            </tr>`;
+
+        for (let d = -12; d <= -3; d++) {[cite: 1]
+            let potenz = Math.pow(10, d);[cite: 1]
+            for (let i = 0; i < 12; i++) {[cite: 1]
+                let c2 = E12[i] * potenz;[cite: 1]
+                
+                // Worst-Case Tests
+                let iMaxSpannung = berechneStrom(c1, c2, CL_FIX, uMax, FAKTOR_HOCH, RM_FIX);[cite: 1]
+                let iMinSpannung = berechneStrom(c1, c2, CL_FIX, uMin, FAKTOR_NIEDRIG, RM_FIX);[cite: 1]
+
+                // Prüfung der Limits
+                if (iMaxSpannung > I_LIMIT_HOCH && iMinSpannung <= I_LIMIT_NIEDRIG) {[cite: 1]
+                    html += `<tr>
+                        <td>${c2.toExponential(1)}</td>
+                        <td>${iMaxSpannung.toExponential(3)} A</td>
+                        <td>${iMinSpannung.toExponential(3)} A</td>
+                    </tr>`;
+                    gefunden = true;
+                }
             }
         }
-    }
 
-    if (!gefunden) {
-        printf("Kein C2 gefunden, der fuer den gesamten Bereich %.2f - %.2f V passt.\n", u_min, u_max);
+        if (gefunden) {
+            output.innerHTML = html + "</table>";
+        } else {
+            output.innerHTML = `<div class="no-result">Kein passender C2 im Bereich ${uMin}V - ${uMax}V gefunden.</div>`;[cite: 1]
+        }
     }
-    printf("-----------|-------------------|-------------------\n");
+</script>
 
-    return 0;
-}
+</body>
+</html>
